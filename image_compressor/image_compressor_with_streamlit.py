@@ -1,16 +1,8 @@
 import streamlit as st
 import matplotlib.pyplot as plt
 import cv2
-from tools import Tools
+from tools import Tools as ts
 
-image = cv2.imread("random_image", cv2.IMREAD_GRAYSCALE)
+image = cv2.imread("random_image.jpg", cv2.IMREAD_GRAYSCALE)
 
-def U(matrix):
-    return matrix
-
-def Vt(matrix):
-    return matrix
-
-def sigma(matrix):
-    return matrix 
-
+print(image)

@@ -1,6 +1,7 @@
 class Tools:
-    def __init__ (self, matrix = None):
+    def __init__ (self, matrix = None, iter = 1000):
         self.matrix = matrix if matrix is not None else []
+        self.iter = iter
 
     @property
     def shape(self):
@@ -52,17 +53,75 @@ class Tools:
 
         return result
     
+    def norm(self, l):
+        sumL = 0
+        for i in l:
+            sumL += abs(i) ** 2
+        return sumL ** (1/2)
+    
     def qr_decomposition(self):
         n, _ = self.shape
-        V = self.matrix
-        R = [[1 if i == j else 0 for j in range(n)] for i in range (n)] # identify matrix
-        Q = [[0] * n for _ in range(n)] # zeros matrix
+        V = [row[:] for row in self.T]
+        R = [[1.0 if i == j else 0.0 for j in range(n)] for i in range (n)] # identify matrix
+        Q = [[0.0] * n for _ in range(n)] # zeros matrix
         for i in range(n):
-            
+            V_norm = self.norm(V[i])
+            Q[i] = [V[i][k] / V_norm for k in range (n)]
+            R[i][i] *= self.norm(V[i])
+            for j in range (i+1, n):
+                R[i][j] += sum(Q[i][k] * V[j][k] for k in range(n))
+                V[j] = [V[j][k] - R[i][j] * Q[i][k] for k in range(n)]
+        return Tools(Q).T, R
 
-            
+    def qr_algorithm(self):
+        n, _ = self.shape
+        X = [row[:] for row in self.matrix]
+        eigvecs = [[1.0 if i == j else 0.0 for j in range(n)] for i in range(n)]
+
+        for _ in range(self.iter):
+            Q, R = Tools(X).qr_decomposition()
+            X_new = self.dot(R, Q)
+            eigvecs = self.dot(eigvecs, Q)
+
+            # check if off-diagonal is close enough to zero
+            diff = sum(X_new[i][j]**2 for i in range(n) for j in range(n) if i != j)
+            if diff < 1e-10:
+                break
+
+            X = X_new
+
+        return [X[i][i] for i in range(n)], eigvecs
+    
+    def eig(self):
+        """Returns eigenvalues and eigenvectors."""
+        n, _ = self.shape
+        X = [row[:] for row in self.matrix]
+        # start eigenvectors as identity
+        eigvecs = [[1.0 if i == j else 0.0 for j in range(n)] for i in range(n)]
+
+        for _ in range(self.iter):
+            Q, R = Tools(X).qr_decomposition()
+            X = self.dot(R, Q)
+            eigvecs = self.dot(eigvecs, Q)  # accumulate Q
+
+        eigenvalues = [X[i][i] for i in range(n)]
+        return eigenvalues, eigvecs
+    
     def svd(self):
-        U = self.dot(matrix1=self.matrix, matrix2=self.T)
-        Vt = self.dot(matrix1=self.T, matrix2=self.matrix)
-        S = 
-        return U, S, Vt
+        n, _ = self.shape
+        # A^T * A and A * A^T
+        ATA = self.dot(self.T, self.matrix)
+        AAT = self.dot(self.matrix, self.T)
+
+        # eigenvalues/vectors
+        eigenvalues, V = Tools(ATA).eig()
+        _, U = Tools(AAT).eig()
+
+        # singular values = sqrt of eigenvalues
+        S = [e ** 0.5 for e in eigenvalues]
+
+        return U, S, V
+
+# if __name__ == "__main__":  
+#     t = Tools([[4, 1], [2, 3]])
+#     print(t.qr_algorithm())  # [5.0, 2.0]
